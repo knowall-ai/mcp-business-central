@@ -1,4 +1,6 @@
-# @knowall-ai/mcp-business-central
+# Microsoft Business Central MCP Server
+
+<img width="1536" height="1024" alt="mcp-business-central" src="https://github.com/user-attachments/assets/13932bfd-a5b9-4668-a7cd-ac9549a09673" />
 
 Model Context Protocol (MCP) server for Microsoft Dynamics 365 Business Central. Provides AI assistants with direct access to Business Central data through properly formatted API v2.0 calls.
 
