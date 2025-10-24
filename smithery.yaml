@@ -16,11 +16,13 @@ startCommand:
         type: string
         default: azure_cli
         description: Authentication type (currently only azure_cli is supported).
-  commandFunction:
-    config => {
-      const env = {};
-      if (config.bcServerUrl) env.BC_URL_SERVER = config.bcServerUrl;
-      if (config.bcCompany) env.BC_COMPANY = config.bcCompany;
-      if (config.bcAuthType) env.BC_AUTH_TYPE = config.bcAuthType;
-      return {command: 'node', args: ['build/index.js'], env};
-    }
+  commandFunction: |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', '@knowall-ai/mcp-business-central'],
+      env: {
+        BC_URL_SERVER: config.bcServerUrl || 'https://api.businesscentral.dynamics.com/v2.0/{tenant}/{environment}/api/v2.0',
+        BC_COMPANY: config.bcCompany || '',
+        BC_AUTH_TYPE: config.bcAuthType || 'azure_cli'
+      }
+    })
