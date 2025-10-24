@@ -37,6 +37,14 @@ No installation needed! Configure in Claude Desktop or Claude Code:
 
 **Note for Windows**: Use `cmd` with `/c` as shown above for proper npx execution.
 
+### Using Smithery
+
+Install via [Smithery](https://smithery.ai):
+
+```bash
+npx -y @smithery/cli install @knowall-ai/mcp-business-central --client claude
+```
+
 ### Local Development
 
 ```bash
