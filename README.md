@@ -188,26 +188,6 @@ Delete an item from Business Central.
 - `items` - Product/service items
 - `vendors` - Vendor records
 
-## Differences from Python Version
-
-This TypeScript implementation fixes critical bugs in the original Python `mcp-business-central-server`:
-
-1. **Correct URL Format**:
-   - ❌ Python: `/ODataV4/Company('name')/resource`
-   - ✅ TypeScript: `/companies(id)/resource`
-
-2. **Company Lookup**:
-   - ❌ Python: Uses company name directly (fails)
-   - ✅ TypeScript: Queries company ID by name, caches result
-
-3. **Tool Names**:
-   - ❌ Python: `BC_List_Items`, `BC_Create_Item`, etc.
-   - ✅ TypeScript: `list_items`, `create_item`, etc.
-
-4. **Installation**:
-   - ❌ Python: Requires `pip install`, Python environment
-   - ✅ TypeScript: Zero-install with `npx`
-
 ## Troubleshooting
 
 ### 401 Unauthorized
@@ -248,5 +228,4 @@ Issues and pull requests welcome at https://github.com/knowall-ai/mcp-business-c
 
 ## Related Projects
 
-- Original Python implementation: [mcp-business-central-server](https://github.com/Sofias-ai/mcp-business-central-server)
 - MCP Specification: [modelcontextprotocol.io](https://modelcontextprotocol.io)

@@ -1,0 +1,33 @@
+{
+  "name": "@knowall-ai/mcp-business-central",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for Microsoft Dynamics 365 Business Central",
+  "type": "module",
+  "bin": {
+    "mcp-business-central": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "business-central",
+    "dynamics-365",
+    "model-context-protocol"
+  ],
+  "author": "KnowAll AI",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@azure/identity": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
