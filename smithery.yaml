@@ -2,9 +2,7 @@ startCommand:
   type: stdio
   configSchema:
     type: object
-    required:
-      - bcServerUrl
-      - bcCompany
+    required: []
     properties:
       bcServerUrl:
         type: string
