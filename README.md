@@ -1,3 +1,5 @@
+[![smithery badge](https://smithery.ai/badge/@knowall-ai/mcp-business-central)](https://smithery.ai/server/@knowall-ai/mcp-business-central)
+
 # Microsoft Business Central MCP Server
 
 <img width="1536" height="1024" alt="mcp-business-central" src="https://github.com/user-attachments/assets/13932bfd-a5b9-4668-a7cd-ac9549a09673" />
