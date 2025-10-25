@@ -75,3 +75,24 @@ test:
             - "protocolVersion"
             - "business-central"
             - "0.2.0"
+
+    # Test 3: List tools (for tool discovery)
+    - description: "MCP tools/list should return available tools without requiring authentication"
+      request:
+        method: POST
+        url: /mcp
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json, text/event-stream"
+        body:
+          jsonrpc: "2.0"
+          method: "tools/list"
+          params: {}
+          id: 2
+      expectedResponse:
+        statusCode: 200
+        body:
+          contains:
+            - "get_schema"
+            - "list_items"
+            - "create_item"
