@@ -4,10 +4,13 @@
   "description": "Model Context Protocol server for Microsoft Dynamics 365 Business Central",
   "type": "module",
   "bin": {
-    "mcp-business-central": "./build/index.js"
+    "mcp-business-central": "build/index.js"
   },
+  "files": [
+    "build"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "prepare": "npm run build",
     "dev": "tsc --watch"
   },
@@ -20,7 +23,7 @@
   "author": "KnowAll AI",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "0.6.0",
     "@azure/identity": "^4.0.0"
   },
   "devDependencies": {
