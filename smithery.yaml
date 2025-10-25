@@ -1,5 +1,11 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
+runtime: "container"
+
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+
 startCommand:
   type: http
   url: /mcp
@@ -15,3 +21,11 @@ startCommand:
       bcCompany:
         type: string
         description: The company name to connect to in Business Central.
+  exampleConfig:
+    bcServerUrl: "https://api.businesscentral.dynamics.com/v2.0/00000000-0000-0000-0000-000000000000/Production/api/v2.0"
+    bcCompany: "CRONUS USA, Inc."
+
+env:
+  # These will be set from the user's config
+  BC_URL_SERVER: "${config.bcServerUrl}"
+  BC_COMPANY: "${config.bcCompany}"
