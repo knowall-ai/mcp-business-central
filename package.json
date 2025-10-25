@@ -23,11 +23,13 @@
   "author": "KnowAll AI",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "0.6.0",
-    "@azure/identity": "^4.0.0"
+    "@azure/identity": "^4.0.0",
+    "@modelcontextprotocol/sdk": "0.6.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@vercel/ncc": "^0.38.4",
+    "esbuild": "^0.25.11",
     "typescript": "^5.0.0"
   },
   "engines": {
