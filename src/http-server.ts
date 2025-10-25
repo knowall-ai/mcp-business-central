@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { BusinessCentralClient } from './business-central-client.js';
 import { createMCPServer } from './server.js';
@@ -43,6 +44,13 @@ async function main() {
 
   // Create Express app
   const app = express();
+
+  // Configure CORS to expose the mcp-session-id header (required for browser-based clients)
+  app.use(cors({
+    origin: '*',  // Allow all origins (Smithery needs this)
+    exposedHeaders: ['mcp-session-id'],  // Expose session ID header to browsers
+    allowedHeaders: ['Content-Type', 'mcp-session-id', 'Accept'],  // Allow these headers in requests
+  }));
 
   // Health check endpoint
   app.get('/health', (req: Request, res: Response) => {
