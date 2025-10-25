@@ -1,11 +1,12 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
 startCommand:
-  type: stdio
+  type: http
+  url: /mcp
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
-    required: []
+    required: [bcServerUrl, bcCompany]
     properties:
       bcServerUrl:
         type: string
@@ -13,19 +14,4 @@ startCommand:
         description: The Business Central API server URL (include tenant and environment).
       bcCompany:
         type: string
-        default: ""
         description: The company name to connect to in Business Central.
-      bcAuthType:
-        type: string
-        default: azure_cli
-        description: Authentication type (currently only azure_cli is supported).
-  commandFunction:
-    # A function that produces the CLI command to start the MCP on stdio.
-    |-
-    config => {
-      const env = {};
-      if (config.bcServerUrl) env.BC_URL_SERVER = config.bcServerUrl;
-      if (config.bcCompany) env.BC_COMPANY = config.bcCompany;
-      if (config.bcAuthType) env.BC_AUTH_TYPE = config.bcAuthType;
-      return {command: 'node', args: ['build/index.js'], env};
-    }

@@ -10,7 +10,9 @@ Model Context Protocol (MCP) server for Microsoft Dynamics 365 Business Central.
 
 - ✅ **Correct API URLs**: Uses proper `/companies(id)/resource` format (no ODataV4 segment)
 - ✅ **Zero Installation**: Run with `npx` - no pre-installation required
-- ✅ **Azure CLI Auth**: Leverages existing Azure CLI authentication
+- ✅ **Flexible Authentication**: Azure CLI for local dev, Managed Identity for cloud deployments
+- ✅ **Dual Transport**: STDIO for local use, HTTP for cloud deployments
+- ✅ **Cloud Ready**: Docker support for Azure Container Apps and Smithery
 - ✅ **Clean Tool Names**: No prefixes, just `get_schema`, `list_items`, etc.
 - ✅ **Full CRUD**: Create, read, update, and delete Business Central records
 
@@ -29,8 +31,7 @@ No installation needed! Configure in Claude Desktop or Claude Code:
       "args": ["/c", "npx", "-y", "@knowall-ai/mcp-business-central"],
       "env": {
         "BC_URL_SERVER": "https://api.businesscentral.dynamics.com/v2.0/{tenant-id}/{environment}/api/v2.0",
-        "BC_COMPANY": "Your Company Name",
-        "BC_AUTH_TYPE": "azure_cli"
+        "BC_COMPANY": "Your Company Name"
       }
     }
   }
@@ -47,14 +48,60 @@ Install via [Smithery](https://smithery.ai):
 npx -y @smithery/cli install @knowall-ai/mcp-business-central --client claude
 ```
 
+### Azure Container Apps Deployment
+
+Deploy as an HTTP server for Azure AI Foundry or other cloud services:
+
+1. **Build and push Docker image:**
+
+```bash
+docker build -t your-registry.azurecr.io/bc-mcp:latest .
+docker push your-registry.azurecr.io/bc-mcp:latest
+```
+
+2. **Create Container App:**
+
+```bash
+az containerapp create \
+  --name bc-mcp-server \
+  --resource-group your-rg \
+  --environment your-env \
+  --image your-registry.azurecr.io/bc-mcp:latest \
+  --target-port 3000 \
+  --ingress external \
+  --env-vars \
+    BC_URL_SERVER="https://api.businesscentral.dynamics.com/v2.0/{tenant}/{environment}/api/v2.0" \
+    BC_COMPANY="Your Company Name" \
+  --registry-server your-registry.azurecr.io \
+  --system-assigned
+```
+
+3. **Assign Managed Identity permissions:**
+
+Grant the container app's managed identity access to Business Central APIs in Azure AD.
+
+4. **Use the MCP endpoint:**
+
+The server exposes:
+- `/mcp` - MCP protocol endpoint (POST)
+- `/health` - Health check endpoint (GET)
+
 ### Local Development
 
+**STDIO mode (for Claude Desktop/Code):**
 ```bash
 git clone https://github.com/knowall-ai/mcp-business-central.git
 cd mcp-business-central
 npm install
 npm run build
 node build/index.js
+```
+
+**HTTP mode (for testing cloud deployment):**
+```bash
+npm run build
+npm run start:http
+# Server runs at http://localhost:3000/mcp
 ```
 
 ## Configuration
@@ -65,7 +112,7 @@ node build/index.js
 |----------|----------|-------------|---------|
 | `BC_URL_SERVER` | Yes | Business Central API base URL | `https://api.businesscentral.dynamics.com/v2.0/{tenant}/Production/api/v2.0` |
 | `BC_COMPANY` | Yes | Company display name | `KnowAll Ltd` |
-| `BC_AUTH_TYPE` | No | Authentication type (default: `azure_cli`) | `azure_cli` |
+| `PORT` | No | HTTP server port (default: 3000) | `3000` |
 
 ### Getting Your Configuration Values
 
@@ -78,12 +125,28 @@ Example URL format:
 https://api.businesscentral.dynamics.com/v2.0/00000000-0000-0000-0000-000000000000/Production/api/v2.0
 ```
 
-## Prerequisites
+## Authentication
 
-- **Azure CLI**: Must be installed and authenticated
+The server uses **DefaultAzureCredential** which automatically tries multiple authentication methods:
+
+### Local Development (STDIO mode)
+- **Azure CLI**: Recommended for local development
   - Install: https://docs.microsoft.com/cli/azure/install-azure-cli
   - Login: `az login`
-  - Get token: `az account get-access-token --resource https://api.businesscentral.dynamics.com`
+  - Test: `az account get-access-token --resource https://api.businesscentral.dynamics.com`
+
+### Cloud Deployment (HTTP mode)
+- **Managed Identity**: Automatically used when deployed to Azure Container Apps
+  - No credentials needed in code
+  - Assign the container app's managed identity permissions to Business Central APIs
+
+### Alternative Methods
+DefaultAzureCredential also supports:
+- Environment variables (service principal credentials)
+- Visual Studio authentication
+- VS Code authentication
+
+The credential tries each method in order until one succeeds.
 
 ## Available Tools
 
