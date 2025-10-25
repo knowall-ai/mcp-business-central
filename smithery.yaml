@@ -1,11 +1,18 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
+runtime: "container"
+
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+
 startCommand:
-  type: stdio
+  type: http
+  url: /mcp
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
-    required: []
+    required: [bcServerUrl, bcCompany]
     properties:
       bcServerUrl:
         type: string
@@ -13,19 +20,79 @@ startCommand:
         description: The Business Central API server URL (include tenant and environment).
       bcCompany:
         type: string
-        default: ""
         description: The company name to connect to in Business Central.
-      bcAuthType:
-        type: string
-        default: azure_cli
-        description: Authentication type (currently only azure_cli is supported).
-  commandFunction:
-    # A function that produces the CLI command to start the MCP on stdio.
-    |-
-    config => {
-      const env = {};
-      if (config.bcServerUrl) env.BC_URL_SERVER = config.bcServerUrl;
-      if (config.bcCompany) env.BC_COMPANY = config.bcCompany;
-      if (config.bcAuthType) env.BC_AUTH_TYPE = config.bcAuthType;
-      return {command: 'node', args: ['build/index.js'], env};
-    }
+  exampleConfig:
+    bcServerUrl: "https://api.businesscentral.dynamics.com/v2.0/00000000-0000-0000-0000-000000000000/Production/api/v2.0"
+    bcCompany: "CRONUS USA, Inc."
+
+env:
+  # These will be set from the user's config
+  BC_URL_SERVER: "${config.bcServerUrl}"
+  BC_COMPANY: "${config.bcCompany}"
+
+# Test configuration for Smithery deployment validation
+test:
+  config:
+    bcServerUrl: "https://api.businesscentral.dynamics.com/v2.0/test-tenant/Production/api/v2.0"
+    bcCompany: "Test Company"
+  requests:
+    # Test 1: Health check endpoint
+    - description: "Health check endpoint should return 200"
+      request:
+        method: GET
+        url: /health
+      expectedResponse:
+        statusCode: 200
+        body:
+          status: "healthy"
+          service: "business-central-mcp"
+
+    # Test 2: MCP initialize request
+    - description: "MCP initialize should return server capabilities"
+      request:
+        method: POST
+        url: /mcp
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json, text/event-stream"
+        body:
+          jsonrpc: "2.0"
+          method: "initialize"
+          params:
+            protocolVersion: "2024-11-05"
+            capabilities: {}
+            clientInfo:
+              name: "smithery-test-client"
+              version: "1.0.0"
+          id: 1
+      expectedResponse:
+        statusCode: 200
+        headers:
+          mcp-session-id: ".*"  # Should return a session ID
+        body:
+          # Response will be in SSE format, so we check for the event
+          contains:
+            - "protocolVersion"
+            - "business-central"
+            - "0.2.0"
+
+    # Test 3: List tools (for tool discovery)
+    - description: "MCP tools/list should return available tools without requiring authentication"
+      request:
+        method: POST
+        url: /mcp
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json, text/event-stream"
+        body:
+          jsonrpc: "2.0"
+          method: "tools/list"
+          params: {}
+          id: 2
+      expectedResponse:
+        statusCode: 200
+        body:
+          contains:
+            - "get_schema"
+            - "list_items"
+            - "create_item"

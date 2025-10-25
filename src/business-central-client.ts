@@ -1,9 +1,8 @@
-import { AzureCliCredential } from '@azure/identity';
+import { DefaultAzureCredential } from '@azure/identity';
 
 export interface BusinessCentralConfig {
   serverUrl: string;
   companyName: string;
-  authType: 'azure_cli';
 }
 
 export interface Company {
@@ -22,14 +21,11 @@ export interface Company {
 export class BusinessCentralClient {
   private config: BusinessCentralConfig;
   private companyId?: string;
-  private credential?: AzureCliCredential;
+  private credential: DefaultAzureCredential;
 
   constructor(config: BusinessCentralConfig) {
     this.config = config;
-
-    if (config.authType === 'azure_cli') {
-      this.credential = new AzureCliCredential();
-    }
+    this.credential = new DefaultAzureCredential();
   }
 
   /**
@@ -56,10 +52,6 @@ export class BusinessCentralClient {
    * Make an authenticated request to Business Central API
    */
   private async request(method: string, url: string, body?: any): Promise<any> {
-    if (!this.credential) {
-      throw new Error('Authentication not configured');
-    }
-
     // Get access token for Business Central
     const tokenResponse = await this.credential.getToken('https://api.businesscentral.dynamics.com/.default');
 
