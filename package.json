@@ -1,6 +1,6 @@
 {
   "name": "@knowall-ai/mcp-business-central",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Model Context Protocol server for Microsoft Dynamics 365 Business Central",
   "type": "module",
   "bin": {
