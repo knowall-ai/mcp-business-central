@@ -29,3 +29,49 @@ env:
   # These will be set from the user's config
   BC_URL_SERVER: "${config.bcServerUrl}"
   BC_COMPANY: "${config.bcCompany}"
+
+# Test configuration for Smithery deployment validation
+test:
+  config:
+    bcServerUrl: "https://api.businesscentral.dynamics.com/v2.0/test-tenant/Production/api/v2.0"
+    bcCompany: "Test Company"
+  requests:
+    # Test 1: Health check endpoint
+    - description: "Health check endpoint should return 200"
+      request:
+        method: GET
+        url: /health
+      expectedResponse:
+        statusCode: 200
+        body:
+          status: "healthy"
+          service: "business-central-mcp"
+
+    # Test 2: MCP initialize request
+    - description: "MCP initialize should return server capabilities"
+      request:
+        method: POST
+        url: /mcp
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json, text/event-stream"
+        body:
+          jsonrpc: "2.0"
+          method: "initialize"
+          params:
+            protocolVersion: "2024-11-05"
+            capabilities: {}
+            clientInfo:
+              name: "smithery-test-client"
+              version: "1.0.0"
+          id: 1
+      expectedResponse:
+        statusCode: 200
+        headers:
+          mcp-session-id: ".*"  # Should return a session ID
+        body:
+          # Response will be in SSE format, so we check for the event
+          contains:
+            - "protocolVersion"
+            - "business-central"
+            - "0.2.0"
