@@ -40,7 +40,7 @@ export class BusinessCentralClient {
       return this.companyId;
     }
 
-    const url = `${this.config.serverUrl}/companies?$filter=displayName eq '${this.config.companyName}'`;
+    const url = `${this.config.serverUrl}/companies?$filter=name eq '${this.config.companyName}'`;
     const response = await this.request('GET', url);
 
     if (!response.value || response.value.length === 0) {
