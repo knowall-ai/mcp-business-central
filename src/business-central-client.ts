@@ -1,9 +1,13 @@
-import { AzureCliCredential } from '@azure/identity';
+import { AzureCliCredential, ClientSecretCredential, TokenCredential } from '@azure/identity';
 
 export interface BusinessCentralConfig {
   serverUrl: string;
   companyName: string;
-  authType: 'azure_cli';
+  authType: 'azure_cli' | 'client_credentials';
+  // Required for client_credentials auth
+  tenantId?: string;
+  clientId?: string;
+  clientSecret?: string;
 }
 
 export interface Company {
@@ -22,13 +26,22 @@ export interface Company {
 export class BusinessCentralClient {
   private config: BusinessCentralConfig;
   private companyId?: string;
-  private credential?: AzureCliCredential;
+  private credential?: TokenCredential;
 
   constructor(config: BusinessCentralConfig) {
     this.config = config;
 
     if (config.authType === 'azure_cli') {
       this.credential = new AzureCliCredential();
+    } else if (config.authType === 'client_credentials') {
+      if (!config.tenantId || !config.clientId || !config.clientSecret) {
+        throw new Error('client_credentials auth requires tenantId, clientId, and clientSecret');
+      }
+      this.credential = new ClientSecretCredential(
+        config.tenantId,
+        config.clientId,
+        config.clientSecret
+      );
     }
   }
 
@@ -62,6 +75,10 @@ export class BusinessCentralClient {
 
     // Get access token for Business Central
     const tokenResponse = await this.credential.getToken('https://api.businesscentral.dynamics.com/.default');
+
+    if (!tokenResponse) {
+      throw new Error('Failed to acquire access token');
+    }
 
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${tokenResponse.token}`,

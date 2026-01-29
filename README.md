@@ -11,6 +11,7 @@ Model Context Protocol (MCP) server for Microsoft Dynamics 365 Business Central.
 - ✅ **Correct API URLs**: Uses proper `/companies(id)/resource` format (no ODataV4 segment)
 - ✅ **Zero Installation**: Run with `npx` - no pre-installation required
 - ✅ **Azure CLI Auth**: Leverages existing Azure CLI authentication
+- ✅ **Client Credentials Auth**: Service-to-service authentication for AI agents
 - ✅ **Clean Tool Names**: No prefixes, just `get_schema`, `list_items`, etc.
 - ✅ **Full CRUD**: Create, read, update, and delete Business Central records
 
@@ -65,7 +66,10 @@ node build/index.js
 |----------|----------|-------------|---------|
 | `BC_URL_SERVER` | Yes | Business Central API base URL | `https://api.businesscentral.dynamics.com/v2.0/{tenant}/Production/api/v2.0` |
 | `BC_COMPANY` | Yes | Company display name | `KnowAll Ltd` |
-| `BC_AUTH_TYPE` | No | Authentication type (default: `azure_cli`) | `azure_cli` |
+| `BC_AUTH_TYPE` | No | Authentication type (default: `azure_cli`) | `azure_cli` or `client_credentials` |
+| `BC_TENANT_ID` | For client_credentials | Azure AD tenant ID | `00000000-0000-0000-0000-000000000000` |
+| `BC_CLIENT_ID` | For client_credentials | App registration client ID | `00000000-0000-0000-0000-000000000000` |
+| `BC_CLIENT_SECRET` | For client_credentials | App registration client secret | `your-secret-value` |
 
 ### Getting Your Configuration Values
 
@@ -78,12 +82,72 @@ Example URL format:
 https://api.businesscentral.dynamics.com/v2.0/00000000-0000-0000-0000-000000000000/Production/api/v2.0
 ```
 
-## Prerequisites
+## Authentication
 
-- **Azure CLI**: Must be installed and authenticated
-  - Install: https://docs.microsoft.com/cli/azure/install-azure-cli
-  - Login: `az login`
-  - Get token: `az account get-access-token --resource https://api.businesscentral.dynamics.com`
+> **Recommendation**: Use `azure_cli` authentication - it's simpler to set up and more reliable. The `client_credentials` method is also supported but has known configuration challenges with Business Central's Microsoft Entra Applications setup. See [docs/TROUBLESHOOTING.adoc](docs/TROUBLESHOOTING.adoc) for details.
+
+### Option 1: Azure CLI (Recommended)
+
+The simplest and most reliable authentication method. Uses your existing Azure CLI login.
+
+**Prerequisites:**
+- Install Azure CLI: https://docs.microsoft.com/cli/azure/install-azure-cli
+- Login: `az login`
+- Verify access: `az account get-access-token --resource https://api.businesscentral.dynamics.com`
+
+**Configuration:**
+```json
+{
+  "mcpServers": {
+    "business-central": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@knowall-ai/mcp-business-central"],
+      "env": {
+        "BC_AUTH_TYPE": "azure_cli",
+        "BC_URL_SERVER": "https://api.businesscentral.dynamics.com/v2.0/{tenant-id}/Production/api/v2.0",
+        "BC_COMPANY": "My Company"
+      }
+    }
+  }
+}
+```
+
+### Option 2: Client Credentials (Service-to-Service)
+
+For automated systems that need to run without user interaction. This method uses OAuth 2.0 client credentials flow.
+
+> **Note**: This method has known configuration challenges. The Business Central "Microsoft Entra Applications" setup can be complex and the application user creation may not work as expected. See [docs/TROUBLESHOOTING.adoc](docs/TROUBLESHOOTING.adoc) for detailed guidance.
+
+**Setup Overview:**
+
+1. **Create Azure App Registration**:
+   - Go to Azure Portal → Azure Active Directory → App registrations
+   - Create new registration (single tenant)
+   - Add API permission: Dynamics 365 Business Central → `app_access` (Application permission, NOT Delegated)
+   - Grant admin consent for the permission
+   - Add redirect URI: `https://businesscentral.dynamics.com/OAuthLanding.htm`
+
+2. **Generate Client Secret**:
+   - In your app registration, go to Certificates & secrets
+   - Create a new client secret and save it securely
+
+3. **Configure Business Central**:
+   - In Business Central, search for "Microsoft Entra Applications"
+   - Click **+ New** and enter your app's Client ID
+   - Set a Description (this becomes the application user name)
+   - Set State to "Enabled" - you should see "A user named '[Description]' will be created"
+   - Add permission sets: `D365 BUS FULL ACCESS` (recommended) or `D365 READ`
+   - Leave Company field blank for all companies access
+   - Click "Grant Consent"
+
+4. **Verify Setup**:
+   - The application user should appear in the Users list in Business Central
+   - If not, see [docs/TROUBLESHOOTING.adoc](docs/TROUBLESHOOTING.adoc) for solutions
+
+**References**:
+- [Microsoft: Service-to-service authentication](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/administration/automation-apis-using-s2s-authentication)
+- [Business Central API Authentication](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/webservices/authenticate-web-services-using-oauth)
 
 ## Available Tools
 
@@ -202,20 +266,12 @@ Delete an item from Business Central.
 
 ## Troubleshooting
 
-### 401 Unauthorized
-- Ensure Azure CLI is logged in: `az login`
-- Verify you have access to Business Central in your tenant
-- Test token retrieval: `az account get-access-token --resource https://api.businesscentral.dynamics.com`
+See [docs/TROUBLESHOOTING.adoc](docs/TROUBLESHOOTING.adoc) for detailed troubleshooting guides covering:
 
-### Company Not Found
-- Check company name matches exactly (case-sensitive)
-- Verify company exists: Access Business Central web UI
-- Ensure URL includes correct tenant ID and environment
-
-### Resource Not Found
-- Check resource name spelling (e.g., `customers` not `customer`)
-- Some resources may not be available in your Business Central version
-- Use `get_schema` to explore available resources
+- Authentication issues (401 errors, token problems)
+- `client_credentials` setup challenges and known issues
+- Company not found errors
+- Environment-specific configuration (Production vs Sandbox)
 
 ## Development
 

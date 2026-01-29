@@ -1,0 +1,236 @@
+= Troubleshooting Guide: Business Central MCP Server
+:toc:
+:toc-placement!:
+
+toc::[]
+
+== Authentication Methods
+
+=== Recommended: azure_cli Authentication
+
+The `azure_cli` method is the **recommended** authentication approach due to its simplicity and reliability. It uses your existing Azure CLI login session.
+
+**Advantages:**
+* Simple setup - just `az login`
+* Reliable authentication
+* Uses your existing Business Central user and permissions
+
+**Disadvantages:**
+* Requires a user with Business Central license
+* Requires Azure CLI to be installed and logged in
+* Token expires and needs refresh (handled automatically by Azure CLI)
+
+=== Experimental: client_credentials Authentication
+
+The `client_credentials` OAuth flow is designed for service-to-service scenarios where no user interaction is possible. However, **we have encountered significant configuration challenges** with this method.
+
+WARNING: The `client_credentials` setup has known issues with Business Central's "Microsoft Entra Applications" configuration. The application user may not be created properly despite following Microsoft's documentation. Use `azure_cli` if possible.
+
+== client_credentials Issues and Troubleshooting
+
+The `client_credentials` method theoretically doesn't require a per-user license, but setup can be complex and may not work as expected.
+
+==== Common Error: "Authentication_InvalidCredentials"
+
+[source]
+----
+{"error":{"code":"Authentication_InvalidCredentials","message":"Web service call failed because user could not be authenticated or authorized."}}
+----
+
+This error typically means the application user wasn't properly created in Business Central.
+
+==== Setup Checklist
+
+===== 1. Azure App Registration
+
+. Go to https://portal.azure.com[Azure Portal] → App registrations → New registration
+. Note the **Application (client) ID** and **Directory (tenant) ID**
+. Go to **Certificates & secrets** → New client secret (save the value!)
+. Go to **API permissions** → Add a permission → APIs my organization uses
+. Search for "Dynamics 365 Business Central" and select it
+. Select **Application permissions** (NOT Delegated)
+. Add `app_access` permission
+. Click **Grant admin consent for [your tenant]**
+. Go to **Authentication** → Add redirect URI:
++
+[source]
+----
+https://businesscentral.dynamics.com/OAuthLanding.htm
+----
+
+===== 2. Business Central Configuration
+
+. In Business Central, search for **"Microsoft Entra Applications"**
+. Click **+ New**
+. Enter the **Client ID** from your Azure app registration
+. Set a **Description** (e.g., "MCP Business Central API")
+. Set **State** to **Enabled**
++
+[IMPORTANT]
+====
+You should see a message: "A user named '[Description]' will be created"
+====
+. Add **User Permission Sets**:
+** `D365 BUS FULL ACCESS` (recommended) or `D365 READ` for read-only
+** Leave **Company** field blank for all companies, or specify a company
+. Click **Grant Consent**
+
+===== 3. Verify User Creation
+
+After enabling the Microsoft Entra Application:
+
+. Go to **Users** in Business Central
+. The application user (matching your Description) should appear
+. If it doesn't appear, try:
+** Disable and re-enable the State
+** Click Grant Consent again
+** Check the Application Event Log for errors
+
+==== Known Issues
+
+===== Application User Not Created
+
+**Symptom:** The Microsoft Entra Application shows a User ID, but the user doesn't appear in the Users list.
+
+**Possible Causes:**
+
+* Grant Consent didn't complete successfully
+* Azure AD sync delay (wait 2-3 minutes)
+* Missing redirect URI in Azure app registration
+* Tenant-specific configuration issue
+
+**Solutions to Try:**
+
+. Ensure redirect URI `https://businesscentral.dynamics.com/OAuthLanding.htm` is configured in Azure
+. In BC, disable the app → Save → Enable the app → Save → Grant Consent
+. Delete the Microsoft Entra Application entry and recreate it
+. Check Azure Portal → Enterprise applications → Your app → Users and groups
+. Contact Microsoft support if the issue persists
+
+===== AADSTS65007 Error
+
+[source]
+----
+AADSTS65007: Client '...' required resource access configuration has changed
+----
+
+**Solution:** Wait 2-3 minutes for Azure AD to sync, then try Grant Consent again. If it persists, go to Azure Portal → App registrations → Your app → API permissions → Grant admin consent.
+
+===== App ID Shows All Zeros
+
+If the **App ID** field in Microsoft Entra Applications shows `{00000000-0000-0000-0000-000000000000}`:
+
+* This is normal - the App ID field is for BC extensions, not the Azure app
+* The **Client ID** field should contain your Azure app's Application (client) ID
+
+==== Verifying Your Token
+
+You can verify your token has the correct permissions:
+
+[source,bash]
+----
+# Get a token
+TOKEN=$(curl -s -X POST "https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id={client-id}" \
+  -d "client_secret={client-secret}" \
+  -d "scope=https://api.businesscentral.dynamics.com/.default" | jq -r '.access_token')
+
+# Decode and check roles (should include "app_access")
+echo $TOKEN | cut -d'.' -f2 | base64 -d 2>/dev/null | jq '{aud, roles}'
+----
+
+Expected output:
+[source,json]
+----
+{
+  "aud": "https://api.businesscentral.dynamics.com",
+  "roles": ["app_access"]
+}
+----
+
+==== Testing the API Directly
+
+[source,bash]
+----
+# Test with curl
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://api.businesscentral.dynamics.com/v2.0/{tenant-id}/Production/api/v2.0/companies"
+----
+
+=== azure_cli Authentication (Development/Interactive Use)
+
+The `azure_cli` authentication method uses your Azure CLI login and is simpler to set up.
+
+==== Prerequisites
+
+. Install Azure CLI: https://docs.microsoft.com/cli/azure/install-azure-cli
+. Login: `az login`
+. Verify access: `az account get-access-token --resource https://api.businesscentral.dynamics.com`
+
+==== Common Issues
+
+===== "AADSTS700016: Application not found"
+
+Your Azure CLI may be using a different tenant. Specify the tenant:
+
+[source,bash]
+----
+az login --tenant {tenant-id}
+----
+
+===== Token Expired
+
+Re-authenticate:
+
+[source,bash]
+----
+az login
+----
+
+== Company Not Found
+
+[source]
+----
+Error: Company 'My Company' not found
+----
+
+**Causes:**
+
+* Company name doesn't match exactly (case-sensitive for the `name` field)
+* Using `displayName` instead of `name`
+
+**Solution:**
+
+List companies to find the exact name:
+
+[source,bash]
+----
+# Using azure_cli
+TOKEN=$(az account get-access-token --resource https://api.businesscentral.dynamics.com --query "accessToken" -o tsv)
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://api.businesscentral.dynamics.com/v2.0/{tenant-id}/Production/api/v2.0/companies" | jq '.value[] | {name, displayName}'
+----
+
+Use the `name` field value (not `displayName`) for `BC_COMPANY`.
+
+== Environment-Specific Issues
+
+=== Production vs Sandbox
+
+Microsoft Entra Applications must be configured **separately in each environment**:
+
+* Production: Configure in Production environment
+* Sandbox: Configure in Sandbox environment
+
+The URL changes based on environment:
+
+* Production: `.../v2.0/{tenant-id}/Production/api/v2.0`
+* Sandbox: `.../v2.0/{tenant-id}/Sandbox/api/v2.0`
+
+== References
+
+* https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/administration/automation-apis-using-s2s-authentication[Microsoft: Service-to-Service Authentication]
+* https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/webservices/authenticate-web-services-using-oauth[Microsoft: OAuth Authentication for Web Services]
+* https://www.kauffmann.nl/2021/07/06/service-to-service-authentication-in-business-central-18-3-how-to-set-up/[Kauffmann: S2S Authentication Setup Guide]
