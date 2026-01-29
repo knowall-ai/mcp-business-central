@@ -12,22 +12,35 @@ import { BusinessCentralClient } from './business-central-client.js';
 const BC_URL_SERVER = process.env.BC_URL_SERVER;
 const BC_COMPANY = process.env.BC_COMPANY;
 const BC_AUTH_TYPE = process.env.BC_AUTH_TYPE || 'azure_cli';
+const BC_TENANT_ID = process.env.BC_TENANT_ID;
+const BC_CLIENT_ID = process.env.BC_CLIENT_ID;
+const BC_CLIENT_SECRET = process.env.BC_CLIENT_SECRET;
 
 if (!BC_URL_SERVER || !BC_COMPANY) {
   console.error('Error: BC_URL_SERVER and BC_COMPANY environment variables are required');
   process.exit(1);
 }
 
-if (BC_AUTH_TYPE !== 'azure_cli') {
-  console.error('Error: Only azure_cli authentication is currently supported');
+if (BC_AUTH_TYPE !== 'azure_cli' && BC_AUTH_TYPE !== 'client_credentials') {
+  console.error('Error: BC_AUTH_TYPE must be either "azure_cli" or "client_credentials"');
   process.exit(1);
+}
+
+if (BC_AUTH_TYPE === 'client_credentials') {
+  if (!BC_TENANT_ID || !BC_CLIENT_ID || !BC_CLIENT_SECRET) {
+    console.error('Error: BC_TENANT_ID, BC_CLIENT_ID, and BC_CLIENT_SECRET are required for client_credentials authentication');
+    process.exit(1);
+  }
 }
 
 // Create Business Central client
 const bcClient = new BusinessCentralClient({
   serverUrl: BC_URL_SERVER,
   companyName: BC_COMPANY,
-  authType: BC_AUTH_TYPE
+  authType: BC_AUTH_TYPE as 'azure_cli' | 'client_credentials',
+  tenantId: BC_TENANT_ID,
+  clientId: BC_CLIENT_ID,
+  clientSecret: BC_CLIENT_SECRET,
 });
 
 // Create MCP server
