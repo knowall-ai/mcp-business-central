@@ -15,14 +15,16 @@ const BC_AUTH_TYPE = process.env.BC_AUTH_TYPE || 'azure_cli';
 const BC_TENANT_ID = process.env.BC_TENANT_ID;
 const BC_CLIENT_ID = process.env.BC_CLIENT_ID;
 const BC_CLIENT_SECRET = process.env.BC_CLIENT_SECRET;
+const BC_USERNAME = process.env.BC_USERNAME;
+const BC_PASSWORD = process.env.BC_PASSWORD;
 
 if (!BC_URL_SERVER || !BC_COMPANY) {
   console.error('Error: BC_URL_SERVER and BC_COMPANY environment variables are required');
   process.exit(1);
 }
 
-if (BC_AUTH_TYPE !== 'azure_cli' && BC_AUTH_TYPE !== 'client_credentials') {
-  console.error('Error: BC_AUTH_TYPE must be either "azure_cli" or "client_credentials"');
+if (BC_AUTH_TYPE !== 'azure_cli' && BC_AUTH_TYPE !== 'client_credentials' && BC_AUTH_TYPE !== 'basic') {
+  console.error('Error: BC_AUTH_TYPE must be "azure_cli", "client_credentials", or "basic"');
   process.exit(1);
 }
 
@@ -33,14 +35,23 @@ if (BC_AUTH_TYPE === 'client_credentials') {
   }
 }
 
+if (BC_AUTH_TYPE === 'basic') {
+  if (!BC_USERNAME || !BC_PASSWORD) {
+    console.error('Error: BC_USERNAME and BC_PASSWORD are required for basic authentication');
+    process.exit(1);
+  }
+}
+
 // Create Business Central client
 const bcClient = new BusinessCentralClient({
   serverUrl: BC_URL_SERVER,
   companyName: BC_COMPANY,
-  authType: BC_AUTH_TYPE as 'azure_cli' | 'client_credentials',
+  authType: BC_AUTH_TYPE as 'azure_cli' | 'client_credentials' | 'basic',
   tenantId: BC_TENANT_ID,
   clientId: BC_CLIENT_ID,
   clientSecret: BC_CLIENT_SECRET,
+  username: BC_USERNAME,
+  password: BC_PASSWORD,
 });
 
 // Create MCP server

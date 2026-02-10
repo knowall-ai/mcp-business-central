@@ -18,7 +18,15 @@ startCommand:
       bcAuthType:
         type: string
         default: azure_cli
-        description: Authentication type (currently only azure_cli is supported).
+        description: Authentication type (azure_cli, client_credentials, or basic).
+      bcUsername:
+        type: string
+        default: ""
+        description: Username for basic authentication (on-premises).
+      bcPassword:
+        type: string
+        default: ""
+        description: Password or web service access key for basic authentication (on-premises).
   commandFunction:
     # A function that produces the CLI command to start the MCP on stdio.
     |-
@@ -27,5 +35,7 @@ startCommand:
       if (config.bcServerUrl) env.BC_URL_SERVER = config.bcServerUrl;
       if (config.bcCompany) env.BC_COMPANY = config.bcCompany;
       if (config.bcAuthType) env.BC_AUTH_TYPE = config.bcAuthType;
+      if (config.bcUsername) env.BC_USERNAME = config.bcUsername;
+      if (config.bcPassword) env.BC_PASSWORD = config.bcPassword;
       return {command: 'node', args: ['build/index.js'], env};
     }
