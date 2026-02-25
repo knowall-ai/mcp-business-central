@@ -3,11 +3,14 @@ import { AzureCliCredential, ClientSecretCredential, TokenCredential } from '@az
 export interface BusinessCentralConfig {
   serverUrl: string;
   companyName: string;
-  authType: 'azure_cli' | 'client_credentials';
+  authType: 'azure_cli' | 'client_credentials' | 'basic';
   // Required for client_credentials auth
   tenantId?: string;
   clientId?: string;
   clientSecret?: string;
+  // Required for basic auth (on-prem)
+  username?: string;
+  password?: string;
 }
 
 export interface Company {
@@ -27,6 +30,7 @@ export class BusinessCentralClient {
   private config: BusinessCentralConfig;
   private companyId?: string;
   private credential?: TokenCredential;
+  private basicAuthHeader?: string;
 
   constructor(config: BusinessCentralConfig) {
     this.config = config;
@@ -42,6 +46,11 @@ export class BusinessCentralClient {
         config.clientId,
         config.clientSecret
       );
+    } else if (config.authType === 'basic') {
+      if (!config.username || !config.password) {
+        throw new Error('basic auth requires username and password');
+      }
+      this.basicAuthHeader = `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`;
     }
   }
 
@@ -69,19 +78,22 @@ export class BusinessCentralClient {
    * Make an authenticated request to Business Central API
    */
   private async request(method: string, url: string, body?: any): Promise<any> {
-    if (!this.credential) {
+    let authHeader: string;
+
+    if (this.basicAuthHeader) {
+      authHeader = this.basicAuthHeader;
+    } else if (this.credential) {
+      const tokenResponse = await this.credential.getToken('https://api.businesscentral.dynamics.com/.default');
+      if (!tokenResponse) {
+        throw new Error('Failed to acquire access token');
+      }
+      authHeader = `Bearer ${tokenResponse.token}`;
+    } else {
       throw new Error('Authentication not configured');
     }
 
-    // Get access token for Business Central
-    const tokenResponse = await this.credential.getToken('https://api.businesscentral.dynamics.com/.default');
-
-    if (!tokenResponse) {
-      throw new Error('Failed to acquire access token');
-    }
-
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${tokenResponse.token}`,
+      'Authorization': authHeader,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     };

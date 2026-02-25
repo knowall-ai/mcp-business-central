@@ -12,6 +12,7 @@ Model Context Protocol (MCP) server for Microsoft Dynamics 365 Business Central.
 - ✅ **Zero Installation**: Run with `npx` - no pre-installation required
 - ✅ **Azure CLI Auth**: Leverages existing Azure CLI authentication
 - ✅ **Client Credentials Auth**: Service-to-service authentication for AI agents
+- ✅ **Basic Auth**: Username/password authentication for on-premises servers
 - ✅ **Clean Tool Names**: No prefixes, just `get_schema`, `list_items`, etc.
 - ✅ **Full CRUD**: Create, read, update, and delete Business Central records
 
@@ -66,10 +67,12 @@ node build/index.js
 |----------|----------|-------------|---------|
 | `BC_URL_SERVER` | Yes | Business Central API base URL | `https://api.businesscentral.dynamics.com/v2.0/{tenant}/Production/api/v2.0` |
 | `BC_COMPANY` | Yes | Company display name | `KnowAll Ltd` |
-| `BC_AUTH_TYPE` | No | Authentication type (default: `azure_cli`) | `azure_cli` or `client_credentials` |
+| `BC_AUTH_TYPE` | No | Authentication type (default: `azure_cli`) | `azure_cli`, `client_credentials`, or `basic` |
 | `BC_TENANT_ID` | For client_credentials | Azure AD tenant ID | `00000000-0000-0000-0000-000000000000` |
 | `BC_CLIENT_ID` | For client_credentials | App registration client ID | `00000000-0000-0000-0000-000000000000` |
 | `BC_CLIENT_SECRET` | For client_credentials | App registration client secret | `your-secret-value` |
+| `BC_USERNAME` | For basic | Business Central username | `admin` |
+| `BC_PASSWORD` | For basic | Business Central web service access key or password | `your-password` |
 
 ### Getting Your Configuration Values
 
@@ -84,7 +87,7 @@ https://api.businesscentral.dynamics.com/v2.0/00000000-0000-0000-0000-0000000000
 
 ## Authentication
 
-> **Recommendation**: Use `azure_cli` authentication - it's simpler to set up and more reliable. The `client_credentials` method is also supported but has known configuration challenges with Business Central's Microsoft Entra Applications setup. See [docs/TROUBLESHOOTING.adoc](docs/TROUBLESHOOTING.adoc) for details.
+> **Recommendation**: For cloud (SaaS), use `azure_cli` authentication - it's simpler to set up and more reliable. For on-premises Business Central servers, use `basic` authentication. The `client_credentials` method is also supported but has known configuration challenges with Business Central's Microsoft Entra Applications setup. See [docs/TROUBLESHOOTING.adoc](docs/TROUBLESHOOTING.adoc) for details.
 
 ### Option 1: Azure CLI (Recommended)
 
@@ -148,6 +151,43 @@ For automated systems that need to run without user interaction. This method use
 **References**:
 - [Microsoft: Service-to-service authentication](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/administration/automation-apis-using-s2s-authentication)
 - [Business Central API Authentication](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/webservices/authenticate-web-services-using-oauth)
+
+### Option 3: Basic Authentication (On-Premises)
+
+For on-premises Business Central servers that use Windows or NavUserPassword authentication. This method sends a username and password (or web service access key) with each request using HTTP Basic authentication.
+
+**Prerequisites:**
+- A Business Central on-premises server with Basic authentication enabled in the server configuration
+- A valid Business Central user account
+- A web service access key (recommended) or password for the user
+
+**Setup:**
+
+1. In Business Central, navigate to the **Users** page and select the user account
+2. Generate a **Web Service Access Key** (recommended over using the user's password)
+3. Ensure the user has appropriate permission sets assigned
+
+**Configuration:**
+```json
+{
+  "mcpServers": {
+    "business-central": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@knowall-ai/mcp-business-central"],
+      "env": {
+        "BC_AUTH_TYPE": "basic",
+        "BC_URL_SERVER": "https://your-bc-server:7048/BC/api/v2.0",
+        "BC_COMPANY": "My Company",
+        "BC_USERNAME": "admin",
+        "BC_PASSWORD": "your-web-service-access-key"
+      }
+    }
+  }
+}
+```
+
+> **Note**: The server URL for on-premises typically follows the format `https://{server}:{port}/{instance}/api/v2.0`. The default OData port is 7048. Consult your Business Central server administrator for the exact URL.
 
 ## Available Tools
 
