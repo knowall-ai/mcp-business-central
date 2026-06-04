@@ -68,7 +68,7 @@ export class BusinessCentralClient {
   /**
    * Make an authenticated request to Business Central API
    */
-  private async request(method: string, url: string, body?: any): Promise<any> {
+  private async request(method: string, url: string, body?: any, extraHeaders?: Record<string, string>): Promise<any> {
     if (!this.credential) {
       throw new Error('Authentication not configured');
     }
@@ -83,7 +83,8 @@ export class BusinessCentralClient {
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${tokenResponse.token}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      ...extraHeaders
     };
 
     const options: RequestInit = {
@@ -161,7 +162,13 @@ export class BusinessCentralClient {
   async updateItem(resource: string, itemId: string, data: any): Promise<any> {
     const companyId = await this.getCompanyId();
     const url = `${this.config.serverUrl}/companies(${companyId})/${resource}(${itemId})`;
-    return this.request('PATCH', url, data);
+    // Business Central enforces optimistic concurrency: PATCH requires an If-Match
+    // header carrying the record's ETag. Use the @odata.etag from the supplied data
+    // if present, otherwise '*' (match any current version). Strip the etag from the
+    // body — BC reads it from the header, not the payload.
+    const { '@odata.etag': bodyEtag, ...cleanData } = data ?? {};
+    const ifMatch = typeof bodyEtag === 'string' && bodyEtag.length > 0 ? bodyEtag : '*';
+    return this.request('PATCH', url, cleanData, { 'If-Match': ifMatch });
   }
 
   /**
@@ -170,6 +177,8 @@ export class BusinessCentralClient {
   async deleteItem(resource: string, itemId: string): Promise<void> {
     const companyId = await this.getCompanyId();
     const url = `${this.config.serverUrl}/companies(${companyId})/${resource}(${itemId})`;
-    await this.request('DELETE', url);
+    // DELETE also requires an If-Match header (optimistic concurrency); '*' matches
+    // the current version.
+    await this.request('DELETE', url, undefined, { 'If-Match': '*' });
   }
 }
